@@ -1,0 +1,170 @@
+---
+title: "Combined Data Clusters"
+author: "Saloni Bonde"
+date: "2024-04-15"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r}
+# Load necessary libraries
+library(tidyverse)
+library(cluster)    # For clustering and silhouette
+library(factoextra) # For visualizing clusters and PCA
+```
+
+```{r}
+# Load the readxl package
+library(readxl)
+
+# Import data from two sheets of the Excel file
+cust_data <- read_excel("CustCleaned.xlsx", sheet = "Sheet1")
+noncust_data <- read_excel("NonCustomerCleaned.xlsx", sheet = "Sheet1")
+
+# Get the names of the columns that are common to both data frames
+common_columns <- intersect(names(cust_data), names(noncust_data))
+
+# Subset both data frames to keep only the common columns
+cust_data_common <- cust_data[, common_columns]
+noncust_data_common <- noncust_data[, common_columns]
+
+# Combine the rows of both data frames
+combined_data <- rbind(cust_data_common, noncust_data_common)
+
+# View the combined data
+print(combined_data)
+
+```
+
+
+```{r}
+library(factoextra)
+library(tidyverse)
+
+# Scale the data
+data_scaled <- scale(combined_data)
+
+# Perform PCA
+pca_result <- prcomp(data_scaled, center = TRUE, scale. = TRUE)
+
+# Examine variance to see how many PCs explain most of the variance
+fviz_eig(pca_result, addlabels = TRUE, ylim = c(0, 100)) +
+  labs(title = "Variance Explained by Principal Components")
+
+# Choose the number of principal components to retain based on the scree plot
+# For visualization, we usually retain 2 PCs
+data_pca <- as.data.frame(pca_result$x[, 1:2])
+
+# Determine the optimal number of clusters using the Elbow method on PCA data
+fviz_nbclust(data_pca, kmeans, method = "wss", k.max = 6) + 
+  labs(title = "Elbow Method for Optimal k (PCA Data)")
+
+# Determine the optimal number of clusters using the Silhouette method on PCA data
+fviz_nbclust(data_pca, kmeans, method = "silhouette", k.max = 6) + 
+  labs(title = "Silhouette Method for Optimal k (PCA Data)")
+
+# Assuming the optimal number of clusters based on above analyses is, say, 3
+set.seed(123) # For reproducibility
+kmeans_result_pca <- kmeans(data_pca, centers = 3, nstart = 25)
+
+# Add the cluster assignments to your PCA data
+data_pca$cluster <- kmeans_result_pca$cluster
+
+# Visualize clusters based on PCA
+fviz_cluster(kmeans_result_pca, data = data_pca, geom = "point") + 
+  labs(title = "Cluster Visualization with PCA")
+```
+
+```{r}
+# Assuming `data_scaled` is your scaled data before PCA and `kmeans_result_pca` is your k-means result on PCA data
+
+# Convert the scaled data to a data frame if it's not already
+data_scaled_df <- as.data.frame(data_scaled)
+
+# Add the cluster assignments to your original scaled data frame
+data_scaled_df$cluster <- kmeans_result_pca$cluster
+
+# Calculate the mean of each variable for each cluster
+cluster_means <- data_scaled_df %>%
+  group_by(cluster) %>%
+  summarise_all(mean, na.rm = TRUE) # Use na.rm = TRUE to remove any NA values
+
+# View the mean values per cluster
+print(cluster_means)
+
+```
+
+
+```{r}
+# Assuming the optimal number of clusters based on above analyses is, say, 2
+set.seed(123) # For reproducibility
+kmeans_result_pca <- kmeans(data_pca, centers = 2, nstart = 25)
+
+# Add the cluster assignments to your PCA data
+data_pca$cluster <- kmeans_result_pca$cluster
+
+# Visualize clusters based on PCA
+fviz_cluster(kmeans_result_pca, data = data_pca, geom = "point") + 
+  labs(title = "Cluster Visualization with PCA")
+```
+
+
+```{r}
+# Assuming the optimal number of clusters based on above analyses is, say, 4
+set.seed(123) # For reproducibility
+kmeans_result_pca <- kmeans(data_pca, centers = 4, nstart = 25)
+
+# Add the cluster assignments to your PCA data
+data_pca$cluster <- kmeans_result_pca$cluster
+
+# Visualize clusters based on PCA
+fviz_cluster(kmeans_result_pca, data = data_pca, geom = "point") + 
+  labs(title = "Cluster Visualization with PCA")
+```
+```{r}
+# Compute the distance matrix on the PCA-reduced data
+d <- dist(data_pca[, -ncol(data_pca)], method = "euclidean")
+
+# Perform hierarchical clustering using Ward's method
+hc <- hclust(d, method = "ward.D2")
+
+# Assuming you want to cut the dendrogram at 4 clusters
+clusters_hc <- cutree(hc, k = 4)
+
+# Add the hierarchical cluster assignments to your PCA data
+data_pca$cluster_hc <- clusters_hc
+```
+
+```{r}
+# Plot the dendrogram
+plot(hc, main = "Hierarchical Clustering Dendrogram", sub = "", xlab = "", cex.lab = 1.2, cex.axis = 0.9, cex.main = 1.5)
+
+# Draw the cut line for 4 clusters (optional)
+abline(h = hc$height[which(diff(hc$height) > diff(range(hc$height)) / 4)[1]], col = "red")
+```
+```{r}
+# Cut the dendrogram to form 3 clusters
+clusters_hc <- cutree(hc, k = 3)
+
+# Add the hierarchical cluster assignments to your PCA data frame
+data_pca$cluster_hc <- clusters_hc
+
+# Ensure data_pca is a data frame
+data_pca <- as.data.frame(data_pca)
+
+# Calculate means for each cluster
+# First, let's remove the last column if it's an existing cluster assignment
+data_pca <- data_pca[, -ncol(data_pca)]
+# Now, add the new hierarchical clustering results
+data_pca$cluster_hc <- clusters_hc
+
+# Now we can group by 'cluster_hc' and summarize
+cluster_means_hc <- data_pca %>%
+  group_by(cluster_hc) %>%
+  summarise(across(everything(), mean, na.rm = TRUE))
+
+# View the mean values per cluster
+print(cluster_means_hc)
+```
+

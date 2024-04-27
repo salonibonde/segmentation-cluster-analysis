@@ -1,0 +1,203 @@
+---
+title: "Sheet 1 Clustering"
+author: "Saloni Bonde"
+date: "2024-04-15"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r}
+# Load necessary libraries
+library(tidyverse)
+library(cluster)  
+library(factoextra) 
+```
+
+```{r}
+# Read in the data
+data <- read_csv("sticks.csv")
+
+# Remove rows where any column has a blank 
+data_cleaned <- data %>%
+  filter_all(all_vars(. != ""))
+
+# View the cleaned data
+print(data_cleaned)
+
+# View a summary to confirm removal of blank entries
+summary(data_cleaned)
+```
+
+```{r}
+# Data needs scaling because clustering is sensitive to scales
+data_scaled <- scale(data_cleaned)
+
+# Determine the optimal number of clusters using the Elbow method
+fviz_nbclust(data_scaled, kmeans, method = "wss", k.max = 15) + 
+  labs(title = "Elbow Method for Optimal k")
+
+# Determine the optimal number of clusters using the Silhouette method
+fviz_nbclust(data_scaled, kmeans, method = "silhouette", k.max = 15) + 
+  labs(title = "Silhouette Method for Optimal k")
+```
+
+```{r}
+# Clustering 1
+# Let's assume k is chosen as 4 here
+set.seed(123) # Setting seed for reproducibility
+kmeans_result <- kmeans(data_scaled, centers = 4, nstart = 25)
+
+# Plot clusters 
+fviz_cluster(kmeans_result, geom = "point", data = data_scaled) + 
+  labs(title = "Cluster Visualization")
+
+# Add cluster assignment to the original data
+data_scaled$cluster <- kmeans_result$cluster
+```
+
+```{r}
+# Read in the data
+data <- read_csv("sticks.csv")
+
+# Remove rows where any column has a blank
+data_cleaned <- data %>%
+  filter_all(all_vars(. != ""))
+
+# View the cleaned data
+print(data_cleaned)
+
+# View a summary to confirm removal of blank entries
+summary(data_cleaned)
+
+# Data Scaled
+data_scaled <- scale(data_cleaned)
+
+```
+
+
+```{r}
+# Clustering 2
+# Let's assume k is chosen as 3 here
+set.seed(123) # Setting seed for reproducibility
+kmeans_result <- kmeans(data_scaled, centers = 3, nstart = 25)
+
+# Plot clusters 
+fviz_cluster(kmeans_result, geom = "point", data = data_scaled) + 
+  labs(title = "Cluster Visualization")
+
+# Add cluster assignment to the original data
+data_scaled$cluster <- kmeans_result$cluster
+```
+```{r}
+# Convert the scaled data to a data frame
+data_scaled_df <- as.data.frame(data_cleaned)
+
+# Add the cluster assignments to scaled data frame
+data_scaled_df$cluster <- kmeans_result$cluster
+
+# Calculate the mean of each variable for each cluster
+cluster_means <- data_scaled_df %>%
+  group_by(cluster) %>%
+  summarise_all(mean, na.rm = TRUE) 
+
+# View the mean values per cluster
+print(cluster_means)
+```
+
+```{r}
+# Read in the data
+data <- read_csv("sticks.csv")
+
+# Remove rows where any column has a blank (empty string)
+data_cleaned <- data %>%
+  filter_all(all_vars(. != ""))
+
+# You can also use the base R method if you prefer:
+data_cleaned_base <- data[!apply(data == "", 1, any), ]
+
+# View the cleaned data
+print(data_cleaned)
+
+# View a summary to confirm removal of blank entries
+summary(data_cleaned)
+
+# Data Scaled
+data_scaled <- scale(data_cleaned)
+
+```
+
+```{r}
+# Clustering 3
+# Let's assume k is chosen as 2
+set.seed(123) # Setting seed for reproducibility
+kmeans_result <- kmeans(data_scaled, centers = 2, nstart = 25)
+
+# Plot clusters
+fviz_cluster(kmeans_result, geom = "point", data = data_scaled) + 
+  labs(title = "Cluster Visualization")
+
+# Add cluster assignment to the original data
+data_scaled$cluster <- kmeans_result$cluster
+```
+```{r}
+# Read in the data
+data <- read_csv("sticks.csv")
+
+# Remove rows where any column has a blank (empty string)
+data_cleaned <- data %>%
+  filter_all(all_vars(. != ""))
+
+# You can also use the base R method if you prefer:
+data_cleaned_base <- data[!apply(data == "", 1, any), ]
+
+# View the cleaned data
+print(data_cleaned)
+
+# View a summary to confirm removal of blank entries
+summary(data_cleaned)
+
+# Data Scaled
+data_scaled <- scale(data_cleaned)
+
+```
+
+
+```{r}
+# Load necessary packages
+library(stats)
+library(factoextra)
+
+# Compute the distance matrix
+d <- dist(data_scaled, method = "euclidean")
+
+# Perform hierarchical clustering using the Ward's method
+hc <- hclust(d, method = "ward.D2")
+
+# Plot the dendrogram
+plot(hc, main = "Hierarchical Clustering Dendrogram", sub = "", xlab = "", cex.lab = 1.2, cex.axis = 0.9, cex.main = 1.5)
+```
+```{r}
+# Assuming hc is your hierarchical clustering object
+# Cut the dendrogram to form 3 clusters
+clusters_hc <- cutree(hc, k = 3)
+
+# Ensure data_scaled is a data frame
+data_scaled <- as.data.frame(data_scaled)
+
+# Add cluster assignments to the data frame
+data_scaled$cluster_hc <- clusters_hc
+```
+
+```{r}
+# Load dplyr for data manipulation
+library(dplyr)
+
+# Calculate means for each cluster
+cluster_means <- data_scaled %>%
+  group_by(cluster_hc) %>%
+  summarise(across(everything(), mean, na.rm = TRUE))
+
+# View the mean values per cluster
+print(cluster_means)
+```
